@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="info.lequer.vault.lib.StoreTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2016-01-18T07:38:40" hostname="acer" time="0.916">
+  <properties/>
+  <testcase name="testStore" classname="info.lequer.vault.lib.StoreTest" time="0.916"/>
+  <system-out><![CDATA[file:/home/michel/Dev/java/Vault/Lib/build/resources/test/testfile.txt
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

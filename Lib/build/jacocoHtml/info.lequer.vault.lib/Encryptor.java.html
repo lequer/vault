@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Encryptor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Lib</a> &gt; <a href="index.source.html" class="el_package">info.lequer.vault.lib</a> &gt; <span class="el_source">Encryptor.java</span></div><h1>Encryptor.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package info.lequer.vault.lib;
+
+import java.io.UnsupportedEncodingException;
+import java.security.AlgorithmParameters;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.InvalidParameterSpecException;
+import java.security.spec.KeySpec;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+
+<span class="nc" id="L32">public class Encryptor {</span>
+
+    /**
+     * @return a new pseudorandom salt of the specified length
+     */
+    private static byte[] generateSalt(int length) {
+<span class="fc" id="L38">        Random r = new SecureRandom();</span>
+<span class="fc" id="L39">        byte[] salt = new byte[length];</span>
+<span class="fc" id="L40">        r.nextBytes(salt);</span>
+<span class="fc" id="L41">        return salt;</span>
+    }
+
+    private static SecretKey genrerateKey(char[] password, byte[] salt) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        /* Derive the key, given password and salt. */
+<span class="fc" id="L46">        SecretKeyFactory factory = SecretKeyFactory.getInstance(&quot;PBKDF2WithHmacSHA256&quot;);</span>
+<span class="fc" id="L47">        KeySpec spec = new PBEKeySpec(password, salt, 65536, 256);</span>
+<span class="fc" id="L48">        SecretKey tmp = factory.generateSecret(spec);</span>
+<span class="fc" id="L49">        return new SecretKeySpec(tmp.getEncoded(), &quot;AES&quot;);</span>
+    }
+
+    public static String encrypt(char[] password, String text) throws InvalidEncryptionException {
+        try {
+<span class="fc" id="L54">            byte[] salt = generateSalt(16);</span>
+<span class="fc" id="L55">            SecretKey key = genrerateKey(password, salt);</span>
+            /* Encrypt the message. */
+<span class="fc" id="L57">            Cipher cipher = Cipher.getInstance(&quot;AES/CBC/PKCS5Padding&quot;);</span>
+<span class="fc" id="L58">            cipher.init(Cipher.ENCRYPT_MODE, key);</span>
+<span class="fc" id="L59">            AlgorithmParameters params = cipher.getParameters();</span>
+<span class="fc" id="L60">            byte[] iv = params.getParameterSpec(IvParameterSpec.class).getIV();</span>
+<span class="fc" id="L61">            byte[] ciphertext = cipher.doFinal(text.getBytes(&quot;UTF-8&quot;));</span>
+            
+<span class="fc" id="L63">            byte[] finalCiphertext = new byte[ciphertext.length + 32];</span>
+<span class="fc" id="L64">            System.arraycopy(iv, 0, finalCiphertext, 0, 16);</span>
+<span class="fc" id="L65">            System.arraycopy(salt, 0, finalCiphertext, 16, 16);</span>
+<span class="fc" id="L66">            System.arraycopy(ciphertext, 0, finalCiphertext, 32, ciphertext.length);</span>
+            
+<span class="fc" id="L68">            return new String(Base64.getEncoder().encode(finalCiphertext));</span>
+<span class="nc" id="L69">        } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException | InvalidParameterSpecException | UnsupportedEncodingException | IllegalBlockSizeException | BadPaddingException ex) {</span>
+<span class="nc" id="L70">            throw new InvalidEncryptionException();</span>
+        }
+    }
+
+    public static String decrypt(char[] password, String encrypted) throws InvalidPasswordException {
+
+        try {
+<span class="fc" id="L77">            byte[] prevCypherText = Base64.getDecoder().decode(encrypted);</span>
+<span class="fc" id="L78">            byte[] ivb = Arrays.copyOfRange(prevCypherText, 0, 16);</span>
+<span class="fc" id="L79">            byte[] salt = Arrays.copyOfRange(prevCypherText, 16, 32);</span>
+<span class="fc" id="L80">            byte[] cypherText = Arrays.copyOfRange(prevCypherText, 32, prevCypherText.length);</span>
+            
+<span class="fc" id="L82">            SecretKey key = genrerateKey(password, salt);</span>
+<span class="fc" id="L83">            IvParameterSpec iv = new IvParameterSpec(ivb);</span>
+            
+<span class="fc" id="L85">            Cipher cipher = Cipher.getInstance(&quot;AES/CBC/PKCS5PADDING&quot;);</span>
+<span class="fc" id="L86">            cipher.init(Cipher.DECRYPT_MODE, key, iv);</span>
+            
+<span class="fc" id="L88">            byte[] original = cipher.doFinal(cypherText);</span>
+            
+<span class="fc" id="L90">            return new String(original);</span>
+            /**
+             * TODO create and add relevant exceptions
+             */
+<span class="nc" id="L94">        } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | InvalidKeyException | InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException ex) {</span>
+<span class="nc" id="L95">           throw new InvalidPasswordException();</span>
+        }
+
+    }
+
+    /**
+     * Thrown if an attempt is made to decrypt a stream with an incorrect
+     * password.
+     */
+<span class="nc" id="L104">    public static class InvalidPasswordException extends Exception {</span>
+    }
+
+    public static class InvalidEncryptionException extends Exception {
+
+<span class="nc" id="L109">        public InvalidEncryptionException() {</span>
+<span class="nc" id="L110">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.1.201405082137</span></div></body></html>

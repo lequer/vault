@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Class-Path: libs/slf4j-api-1.7.13.jar libs/slf4j-simple-1.7.7.jar libs
+ /Lib-1.0-SNAPSHOT.jar
+Main-Class: info.lequer.vault.console.Vault
+
